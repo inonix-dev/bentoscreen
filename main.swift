@@ -2,6 +2,7 @@
 // Layouts live in ~/.config/bentoscreen/layouts.json (written on first run).
 import AppKit
 import Carbon.HIToolbox
+import ServiceManagement
 
 struct Slot: Codable { let apps: [String]; let x, y, w, h: Double }  // fractions of the screen, origin top-left
 struct Layout: Codable { let name: String; let hotkey: String; let slots: [Slot] }
@@ -236,14 +237,22 @@ final class App: NSObject, NSApplicationDelegate {
             menu.addItem(NSMenuItem(title: hint, action: nil, keyEquivalent: ""))
         }
         menu.addItem(.separator())
-        for (title, sel) in [("Reload Layouts", #selector(reload))] {
+        for (title, sel) in [("Reload Layouts", #selector(reload)), ("Open at Login", #selector(toggleLogin(_:)))] {
             let mi = NSMenuItem(title: title, action: sel, keyEquivalent: ""); mi.target = self; menu.addItem(mi)
         }
+        menu.items.last?.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(NSMenuItem(title: "Quit BentoScreen", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         item.menu = menu
     }
 
     @objc func pick(_ sender: NSMenuItem) { apply(layouts[sender.tag]) }
+    @objc func toggleLogin(_ sender: NSMenuItem) {
+        do {
+            if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
+            else { try SMAppService.mainApp.register() }
+        } catch { alert("Open at Login failed.\n\n\(error)") }
+        sender.state = SMAppService.mainApp.status == .enabled ? .on : .off
+    }
 }
 
 // Remix Icon "layout-masonry-fill" (Apache-2.0): four rounded tiles on a 24pt grid, drawn as a template image.
