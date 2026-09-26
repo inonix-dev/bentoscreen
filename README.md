@@ -9,7 +9,9 @@ Snap the focused window, ShiftIt-style — press the same key again to cycle ½ 
 
 - `ctrl+opt+cmd ←/→` left / right part, full height
 - `ctrl+opt+cmd ↑/↓` top / bottom part, same column
+- `ctrl+opt+cmd 1/2/3/4` top-left / top-right / bottom-left / bottom-right corner
 - `ctrl+opt+cmd M` fill the screen
+- `ctrl+opt+cmd C` center, same size
 
 Edit layouts from the menu bar icon (Edit Layouts…, then Reload). Each slot is a list of apps
 (name or bundle id) and a rect as fractions of the screen, `x,y` from the top-left:

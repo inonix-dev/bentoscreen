@@ -87,8 +87,9 @@ func apply(_ layout: Layout) {
 
 // MARK: snap the focused window (ShiftIt-style)
 
-enum Snap: Int, CaseIterable { case left, right, up, down, fill }
-let snapKeys: [Snap: String] = [.left: "left", .right: "right", .up: "up", .down: "down", .fill: "m"]
+enum Snap: Int, CaseIterable { case left, right, up, down, fill, topLeft, topRight, bottomLeft, bottomRight, center }
+let snapKeys: [Snap: String] = [.left: "left", .right: "right", .up: "up", .down: "down", .fill: "m",
+                                .topLeft: "1", .topRight: "2", .bottomLeft: "3", .bottomRight: "4", .center: "c"]
 let snapMods = "ctrl+opt+cmd"
 let steps: [CGFloat] = [1.0 / 2, 2.0 / 3, 1.0 / 3]  // pressing the same key again cycles through these
 
@@ -103,6 +104,14 @@ func snapRect(_ snap: Snap, step: Int, vis: CGRect, win: CGRect) -> CGRect {
     case .up: r = CGRect(x: win.minX, y: vis.minY, width: win.width, height: vis.height * f)
     case .down: r = CGRect(x: win.minX, y: vis.maxY - vis.height * f, width: win.width, height: vis.height * f)
     case .fill: r = vis
+    case .topLeft, .topRight, .bottomLeft, .bottomRight:
+        let w = vis.width * f, h = vis.height * f
+        let x = snap == .topLeft || snap == .bottomLeft ? vis.minX : vis.maxX - w
+        let y = snap == .topLeft || snap == .topRight ? vis.minY : vis.maxY - h
+        r = CGRect(x: x, y: y, width: w, height: h)
+    case .center:  // keeps its size (clamped to the screen), no cycling
+        let w = min(win.width, vis.width), h = min(win.height, vis.height)
+        r = CGRect(x: vis.midX - w / 2, y: vis.midY - h / 2, width: w, height: h)
     }
     return r.integral
 }
@@ -208,7 +217,8 @@ final class App: NSObject, NSApplicationDelegate {
             mi.tag = i; mi.target = self; menu.addItem(mi)
         }
         menu.addItem(.separator())
-        for hint in ["⌃⌥⌘ ← →   left / right  ½ → ⅔ → ⅓", "⌃⌥⌘ ↑ ↓   top / bottom  ½ → ⅔ → ⅓", "⌃⌥⌘ M      fill screen"] {
+        for hint in ["⌃⌥⌘ ← →   left / right  ½ → ⅔ → ⅓", "⌃⌥⌘ ↑ ↓   top / bottom  ½ → ⅔ → ⅓", "⌃⌥⌘ 1 2 3 4   corners  ½ → ⅔ → ⅓",
+                     "⌃⌥⌘ M      fill screen", "⌃⌥⌘ C      center"] {
             menu.addItem(NSMenuItem(title: hint, action: nil, keyEquivalent: ""))
         }
         menu.addItem(.separator())
@@ -255,6 +265,10 @@ func selfCheck() {
     precondition(snapRect(.up, step: 1, vis: vis, win: win) == CGRect(x: 0, y: 25, width: 600, height: 600))
     precondition(snapRect(.down, step: 2, vis: vis, win: win) == CGRect(x: 0, y: 625, width: 600, height: 300))
     precondition(snapRect(.down, step: 3, vis: vis, win: win) == snapRect(.down, step: 0, vis: vis, win: win))
+    precondition(snapRect(.bottomRight, step: 0, vis: vis, win: win) == CGRect(x: 600, y: 475, width: 600, height: 450))
+    precondition(snapRect(.topLeft, step: 2, vis: vis, win: win) == CGRect(x: 0, y: 25, width: 400, height: 300))
+    precondition(snapRect(.center, step: 0, vis: vis, win: CGRect(x: 0, y: 0, width: 400, height: 2000))
+                 == CGRect(x: 400, y: 25, width: 400, height: 900))
     precondition(parseHotkey("ctrl+opt+cmd+left") != nil)
     print("ok")
 }
