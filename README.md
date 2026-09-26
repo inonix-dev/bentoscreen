@@ -14,7 +14,7 @@ Snap the focused window, ShiftIt-style — press the same key again to cycle ½ 
 - `ctrl+opt+cmd C` center, same size
 - `ctrl+opt+cmd N` move to the next display
 
-Edit layouts from the menu bar icon (Edit Layouts…, then Reload). Each slot is a list of apps
+Edit `~/.config/bentoscreen/layouts.json`, then menu bar icon → Reload Layouts. Each slot is a list of apps
 (name or bundle id) and a rect as fractions of the screen, `x,y` from the top-left:
 
 ```json

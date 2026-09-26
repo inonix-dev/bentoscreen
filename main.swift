@@ -236,7 +236,7 @@ final class App: NSObject, NSApplicationDelegate {
             menu.addItem(NSMenuItem(title: hint, action: nil, keyEquivalent: ""))
         }
         menu.addItem(.separator())
-        for (title, sel) in [("Edit Layouts…", #selector(edit)), ("Reload Layouts", #selector(reload))] {
+        for (title, sel) in [("Reload Layouts", #selector(reload))] {
             let mi = NSMenuItem(title: title, action: sel, keyEquivalent: ""); mi.target = self; menu.addItem(mi)
         }
         menu.addItem(NSMenuItem(title: "Quit BentoScreen", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -244,7 +244,6 @@ final class App: NSObject, NSApplicationDelegate {
     }
 
     @objc func pick(_ sender: NSMenuItem) { apply(layouts[sender.tag]) }
-    @objc func edit() { NSWorkspace.shared.open(configURL) }
 }
 
 // Remix Icon "layout-masonry-fill" (Apache-2.0): four rounded tiles on a 24pt grid, drawn as a template image.
