@@ -16,7 +16,7 @@ cat > "$APP/Contents/Info.plist" <<EOF
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>CFBundleName</key><string>BentoScreen</string>
-  <key>CFBundleIdentifier</key><string>org.inonix.bentoscreen</string>
+  <key>CFBundleIdentifier</key><string>org.zecalis.bentoscreen</string>
   <key>CFBundleExecutable</key><string>BentoScreen</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
