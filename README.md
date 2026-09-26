@@ -32,7 +32,9 @@ To start it at login: menu bar icon → Open at Login.
 
 ## Build
 
-`./build.sh` → `build/BentoScreen.app` + `.zip` (universal, ad-hoc signed).
-`SIGN_ID="Developer ID Application: …" ./build.sh` signs with a real identity.
+`./build.sh` → `build/BentoScreen.app` + `.zip` (universal). It signs with the `BentoScreen Dev`
+code-signing certificate from your keychain (create a self-signed one in Keychain Access), or
+falls back to ad-hoc, which loses the Accessibility grant on every rebuild.
+`SIGN_ID="Developer ID Application: …" ./build.sh` signs with another identity; `SIGN_ID=-` forces ad-hoc.
 
 Menu bar icon: Remix Icon `layout-masonry-fill`, Apache-2.0.
