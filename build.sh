@@ -7,6 +7,9 @@ rm -rf build && mkdir -p "$APP/Contents/MacOS"
 for arch in arm64 x86_64; do
   swiftc -O -target $arch-apple-macos13 main.swift -o build/bentoscreen-$arch
 done
+swift icon.swift build/AppIcon.iconset
+mkdir -p "$APP/Contents/Resources"
+iconutil -c icns build/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
 lipo -create build/bentoscreen-arm64 build/bentoscreen-x86_64 -output "$APP/Contents/MacOS/bentoscreen"
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -15,6 +18,7 @@ cat > "$APP/Contents/Info.plist" <<EOF
   <key>CFBundleName</key><string>bentoscreen</string>
   <key>CFBundleIdentifier</key><string>org.inonix.bentoscreen</string>
   <key>CFBundleExecutable</key><string>bentoscreen</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.1.0</string>
   <key>CFBundleVersion</key><string>1</string>

@@ -87,9 +87,9 @@ func apply(_ layout: Layout) {
 
 // MARK: snap the focused window (ShiftIt-style)
 
-enum Snap: Int, CaseIterable { case left, right, up, down, fill, topLeft, topRight, bottomLeft, bottomRight, center }
+enum Snap: Int, CaseIterable { case left, right, up, down, fill, topLeft, topRight, bottomLeft, bottomRight, center, nextScreen }
 let snapKeys: [Snap: String] = [.left: "left", .right: "right", .up: "up", .down: "down", .fill: "m",
-                                .topLeft: "1", .topRight: "2", .bottomLeft: "3", .bottomRight: "4", .center: "c"]
+                                .topLeft: "1", .topRight: "2", .bottomLeft: "3", .bottomRight: "4", .center: "c", .nextScreen: "n"]
 let snapMods = "ctrl+opt+cmd"
 let steps: [CGFloat] = [1.0 / 2, 2.0 / 3, 1.0 / 3]  // pressing the same key again cycles through these
 
@@ -109,11 +109,19 @@ func snapRect(_ snap: Snap, step: Int, vis: CGRect, win: CGRect) -> CGRect {
         let x = snap == .topLeft || snap == .bottomLeft ? vis.minX : vis.maxX - w
         let y = snap == .topLeft || snap == .topRight ? vis.minY : vis.maxY - h
         r = CGRect(x: x, y: y, width: w, height: h)
+    case .nextScreen: r = win  // handled by moveRect, needs the other screen
     case .center:  // keeps its size (clamped to the screen), no cycling
         let w = min(win.width, vis.width), h = min(win.height, vis.height)
         r = CGRect(x: vis.midX - w / 2, y: vis.midY - h / 2, width: w, height: h)
     }
     return r.integral
+}
+
+// Same place and share of the screen, on another screen (clamped so it fits).
+func moveRect(_ win: CGRect, from a: CGRect, to b: CGRect) -> CGRect {
+    let w = min(win.width / a.width * b.width, b.width), h = min(win.height / a.height * b.height, b.height)
+    let x = b.minX + (win.minX - a.minX) / a.width * b.width, y = b.minY + (win.minY - a.minY) / a.height * b.height
+    return CGRect(x: min(max(x, b.minX), b.maxX - w), y: min(max(y, b.minY), b.maxY - h), width: w, height: h).integral
 }
 
 var lastSnap: (win: AXUIElement, snap: Snap, step: Int)?
@@ -138,9 +146,15 @@ func snapFocused(_ snap: Snap) {
     let screen = NSScreen.screens.first { axRect(full, in: $0.frame, primaryHeight: primaryHeight).contains(CGPoint(x: frame.midX, y: frame.midY)) }
         ?? NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main!
     // ponytail: remembers the last press instead of matching frames — apps like iTerm2 round sizes to their grid
+    let vis = { (s: NSScreen) in axRect(full, in: s.visibleFrame, primaryHeight: primaryHeight) }
+    if snap == .nextScreen {
+        let all = NSScreen.screens, i = all.firstIndex(of: screen) ?? 0
+        place(win, moveRect(frame, from: vis(screen), to: vis(all[(i + 1) % all.count])))
+        return
+    }
     let step = lastSnap.map { CFEqual($0.win, win) && $0.snap == snap ? $0.step + 1 : 0 } ?? 0
     lastSnap = (win, snap, step)
-    place(win, snapRect(snap, step: step, vis: axRect(full, in: screen.visibleFrame, primaryHeight: primaryHeight), win: frame))
+    place(win, snapRect(snap, step: step, vis: vis(screen), win: frame))
 }
 
 // MARK: hotkeys
@@ -218,7 +232,7 @@ final class App: NSObject, NSApplicationDelegate {
         }
         menu.addItem(.separator())
         for hint in ["⌃⌥⌘ ← →   left / right  ½ → ⅔ → ⅓", "⌃⌥⌘ ↑ ↓   top / bottom  ½ → ⅔ → ⅓", "⌃⌥⌘ 1 2 3 4   corners  ½ → ⅔ → ⅓",
-                     "⌃⌥⌘ M      fill screen", "⌃⌥⌘ C      center"] {
+                     "⌃⌥⌘ M      fill screen", "⌃⌥⌘ C      center", "⌃⌥⌘ N      next display"] {
             menu.addItem(NSMenuItem(title: hint, action: nil, keyEquivalent: ""))
         }
         menu.addItem(.separator())
@@ -269,6 +283,9 @@ func selfCheck() {
     precondition(snapRect(.topLeft, step: 2, vis: vis, win: win) == CGRect(x: 0, y: 25, width: 400, height: 300))
     precondition(snapRect(.center, step: 0, vis: vis, win: CGRect(x: 0, y: 0, width: 400, height: 2000))
                  == CGRect(x: 400, y: 25, width: 400, height: 900))
+    // left half of a 1200 screen → left half of a 1600 screen sitting to its right
+    precondition(moveRect(win, from: vis, to: CGRect(x: 1200, y: 0, width: 1600, height: 1000))
+                 == CGRect(x: 1200, y: 0, width: 800, height: 1000))
     precondition(parseHotkey("ctrl+opt+cmd+left") != nil)
     print("ok")
 }
