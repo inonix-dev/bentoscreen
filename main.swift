@@ -85,6 +85,55 @@ func apply(_ layout: Layout) {
     }
 }
 
+// MARK: snap the focused window (ShiftIt-style)
+
+enum Snap: Int, CaseIterable { case left, right, up, down, fill }
+let snapKeys: [Snap: String] = [.left: "left", .right: "right", .up: "up", .down: "down", .fill: "m"]
+let snapMods = "ctrl+opt+cmd"
+let steps: [CGFloat] = [1.0 / 2, 2.0 / 3, 1.0 / 3]  // pressing the same key again cycles through these
+
+// vis and win are AX (top-left origin) rects. ←/→ take a width share at full height,
+// ↑/↓ keep the window's column and take a height share.
+func snapRect(_ snap: Snap, step: Int, vis: CGRect, win: CGRect) -> CGRect {
+    let f = steps[step % steps.count]
+    let r: CGRect
+    switch snap {
+    case .left: r = CGRect(x: vis.minX, y: vis.minY, width: vis.width * f, height: vis.height)
+    case .right: r = CGRect(x: vis.maxX - vis.width * f, y: vis.minY, width: vis.width * f, height: vis.height)
+    case .up: r = CGRect(x: win.minX, y: vis.minY, width: win.width, height: vis.height * f)
+    case .down: r = CGRect(x: win.minX, y: vis.maxY - vis.height * f, width: win.width, height: vis.height * f)
+    case .fill: r = vis
+    }
+    return r.integral
+}
+
+var lastSnap: (win: AXUIElement, snap: Snap, step: Int)?
+
+func snapFocused(_ snap: Snap) {
+    guard AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary),
+          let primaryHeight = NSScreen.screens.first?.frame.height else { return }
+    var app: CFTypeRef?, winRef: CFTypeRef?, posRef: CFTypeRef?, sizeRef: CFTypeRef?
+    AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(), kAXFocusedApplicationAttribute as CFString, &app)
+    guard let app else { return }
+    AXUIElementCopyAttributeValue(app as! AXUIElement, kAXFocusedWindowAttribute as CFString, &winRef)
+    guard let winRef else { return }
+    let win = winRef as! AXUIElement
+    AXUIElementCopyAttributeValue(win, kAXPositionAttribute as CFString, &posRef)
+    AXUIElementCopyAttributeValue(win, kAXSizeAttribute as CFString, &sizeRef)
+    var pos = CGPoint.zero, size = CGSize.zero
+    if let posRef { AXValueGetValue(posRef as! AXValue, .cgPoint, &pos) }
+    if let sizeRef { AXValueGetValue(sizeRef as! AXValue, .cgSize, &size) }
+    let frame = CGRect(origin: pos, size: size)
+    let full = Slot(apps: [], x: 0, y: 0, w: 1, h: 1)
+    // the screen the window's centre is on, else the one under the mouse
+    let screen = NSScreen.screens.first { axRect(full, in: $0.frame, primaryHeight: primaryHeight).contains(CGPoint(x: frame.midX, y: frame.midY)) }
+        ?? NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main!
+    // ponytail: remembers the last press instead of matching frames — apps like iTerm2 round sizes to their grid
+    let step = lastSnap.map { CFEqual($0.win, win) && $0.snap == snap ? $0.step + 1 : 0 } ?? 0
+    lastSnap = (win, snap, step)
+    place(win, snapRect(snap, step: step, vis: axRect(full, in: screen.visibleFrame, primaryHeight: primaryHeight), win: frame))
+}
+
 // MARK: hotkeys
 
 let keyCodes: [String: Int] = [
@@ -94,6 +143,7 @@ let keyCodes: [String: Int] = [
     "s": kVK_ANSI_S, "t": kVK_ANSI_T, "u": kVK_ANSI_U, "v": kVK_ANSI_V, "w": kVK_ANSI_W, "x": kVK_ANSI_X,
     "y": kVK_ANSI_Y, "z": kVK_ANSI_Z, "0": kVK_ANSI_0, "1": kVK_ANSI_1, "2": kVK_ANSI_2, "3": kVK_ANSI_3,
     "4": kVK_ANSI_4, "5": kVK_ANSI_5, "6": kVK_ANSI_6, "7": kVK_ANSI_7, "8": kVK_ANSI_8, "9": kVK_ANSI_9,
+    "left": kVK_LeftArrow, "right": kVK_RightArrow, "up": kVK_UpArrow, "down": kVK_DownArrow,
 ]
 let modifiers: [String: Int] = ["ctrl": controlKey, "opt": optionKey, "alt": optionKey, "cmd": cmdKey, "shift": shiftKey]
 
@@ -117,7 +167,14 @@ func registerHotkeys(_ layouts: [Layout]) {
         RegisterEventHotKey(hk.key, hk.mods, EventHotKeyID(signature: 0x42454E54, id: UInt32(i)), GetApplicationEventTarget(), 0, &ref)
         if let ref { hotkeyRefs.append(ref) }
     }
+    for snap in Snap.allCases {
+        let hk = parseHotkey("\(snapMods)+\(snapKeys[snap]!)")!
+        var ref: EventHotKeyRef?
+        RegisterEventHotKey(hk.key, hk.mods, EventHotKeyID(signature: 0x42454E54, id: UInt32(snapIDBase + snap.rawValue)), GetApplicationEventTarget(), 0, &ref)
+        if let ref { hotkeyRefs.append(ref) }
+    }
 }
+let snapIDBase = 1000
 
 // MARK: menu bar app
 
@@ -127,14 +184,15 @@ final class App: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.title = "🍱"
+        item.button?.image = menuIcon()
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
             var id = EventHotKeyID()
             GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &id)
             let app = NSApp.delegate as! App
-            if Int(id.id) < app.layouts.count { apply(app.layouts[Int(id.id)]) }
+            if let snap = Snap(rawValue: Int(id.id) - snapIDBase) { snapFocused(snap) }
+            else if Int(id.id) < app.layouts.count { apply(app.layouts[Int(id.id)]) }
             return noErr
         }, 1, &spec, nil, nil)
         reload()
@@ -150,6 +208,10 @@ final class App: NSObject, NSApplicationDelegate {
             mi.tag = i; mi.target = self; menu.addItem(mi)
         }
         menu.addItem(.separator())
+        for hint in ["⌃⌥⌘ ← →   left / right  ½ → ⅔ → ⅓", "⌃⌥⌘ ↑ ↓   top / bottom  ½ → ⅔ → ⅓", "⌃⌥⌘ M      fill screen"] {
+            menu.addItem(NSMenuItem(title: hint, action: nil, keyEquivalent: ""))
+        }
+        menu.addItem(.separator())
         for (title, sel) in [("Edit Layouts…", #selector(edit)), ("Reload Layouts", #selector(reload))] {
             let mi = NSMenuItem(title: title, action: sel, keyEquivalent: ""); mi.target = self; menu.addItem(mi)
         }
@@ -159,6 +221,19 @@ final class App: NSObject, NSApplicationDelegate {
 
     @objc func pick(_ sender: NSMenuItem) { apply(layouts[sender.tag]) }
     @objc func edit() { NSWorkspace.shared.open(configURL) }
+}
+
+// Remix Icon "layout-masonry-fill" (Apache-2.0): four rounded tiles on a 24pt grid, drawn as a template image.
+func menuIcon() -> NSImage {
+    let img = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
+        let s: CGFloat = 18.0 / 24
+        for (x, y, w, h) in [(3.0, 3.0, 10.0, 8.0), (15, 3, 6, 8), (11, 13, 10, 8), (3, 13, 6, 8)] {
+            NSBezierPath(roundedRect: NSRect(x: x * s, y: y * s, width: w * s, height: h * s), xRadius: s, yRadius: s).fill()
+        }
+        return true
+    }
+    img.isTemplate = true  // follows light/dark menu bar
+    return img
 }
 
 // MARK: self-check (`bentoscreen --check`)
@@ -174,6 +249,13 @@ func selfCheck() {
     precondition(right == CGRect(x: 1600, y: 300, width: 400, height: 600), "\(right)")
     precondition(parseHotkey("ctrl+opt+1")! == (UInt32(kVK_ANSI_1), UInt32(controlKey | optionKey)))
     precondition(parseHotkey("1") == nil && parseHotkey("ctrl+opt+f13") == nil)
+    let vis = CGRect(x: 0, y: 25, width: 1200, height: 900), win = CGRect(x: 0, y: 25, width: 600, height: 900)
+    precondition(snapRect(.left, step: 0, vis: vis, win: win) == CGRect(x: 0, y: 25, width: 600, height: 900))
+    precondition(snapRect(.right, step: 1, vis: vis, win: win) == CGRect(x: 400, y: 25, width: 800, height: 900))
+    precondition(snapRect(.up, step: 1, vis: vis, win: win) == CGRect(x: 0, y: 25, width: 600, height: 600))
+    precondition(snapRect(.down, step: 2, vis: vis, win: win) == CGRect(x: 0, y: 625, width: 600, height: 300))
+    precondition(snapRect(.down, step: 3, vis: vis, win: win) == snapRect(.down, step: 0, vis: vis, win: win))
+    precondition(parseHotkey("ctrl+opt+cmd+left") != nil)
     print("ok")
 }
 

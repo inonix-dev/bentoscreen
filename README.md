@@ -1,11 +1,17 @@
-# bentoscreen 🍱
+# bentoscreen
 
 Menu-bar app for macOS: one hotkey puts every app of a layout in its slot.
 
 - `ctrl+opt+1` **Agent**: browser top-left (2/3), chat bottom-left (1/3), Claude / Zed / iTerm2 right half
 - `ctrl+opt+2` **Half / Half**: browser left, the rest right
 
-Edit layouts from the menu (🍱 → Edit Layouts…, then Reload). Each slot is a list of apps
+Snap the focused window, ShiftIt-style — press the same key again to cycle ½ → ⅔ → ⅓:
+
+- `ctrl+opt+cmd ←/→` left / right part, full height
+- `ctrl+opt+cmd ↑/↓` top / bottom part, same column
+- `ctrl+opt+cmd M` fill the screen
+
+Edit layouts from the menu bar icon (Edit Layouts…, then Reload). Each slot is a list of apps
 (name or bundle id) and a rect as fractions of the screen, `x,y` from the top-left:
 
 ```json
@@ -24,3 +30,5 @@ Privacy & Security → **Open Anyway**, and after each update remove + re-add it
 
 `./build.sh` → `build/bentoscreen.app` + `.zip` (universal, ad-hoc signed).
 `SIGN_ID="Developer ID Application: …" ./build.sh` signs with a real identity.
+
+Menu bar icon: Remix Icon `layout-masonry-fill`, Apache-2.0.
