@@ -26,7 +26,13 @@ cat > "$APP/Contents/Info.plist" <<EOF
   <key>LSUIElement</key><true/>
 </dict></plist>
 EOF
-codesign --force --sign "${SIGN_ID:--}" "$APP"
+# Stable cert keeps the Accessibility grant across rebuilds; ad-hoc (-) changes cdhash every build.
+SIGN_ID="${SIGN_ID:-BentoScreen Dev}"
+if [ "$SIGN_ID" != "-" ] && ! security find-identity -p codesigning | grep -q "\"$SIGN_ID\""; then
+  echo "warning: signing identity '$SIGN_ID' not found, falling back to ad-hoc (re-grant Accessibility after each build)" >&2
+  SIGN_ID=-
+fi
+codesign --force --sign "$SIGN_ID" "$APP"
 "$APP/Contents/MacOS/BentoScreen" --check
 (cd build && ditto -c -k --keepParent BentoScreen.app BentoScreen.zip)
 echo "built build/BentoScreen.app and build/BentoScreen.zip"

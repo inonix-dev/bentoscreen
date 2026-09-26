@@ -14,7 +14,7 @@ Snap the focused window, ShiftIt-style — press the same key again to cycle ½ 
 - `ctrl+opt+cmd C` center, same size
 - `ctrl+opt+cmd N` move to the next display
 
-Edit layouts from the menu bar icon (Edit Layouts…, then Reload). Each slot is a list of apps
+Edit `~/.config/bentoscreen/layouts.json`, then menu bar icon → Reload Layouts. Each slot is a list of apps
 (name or bundle id) and a rect as fractions of the screen, `x,y` from the top-left:
 
 ```json
@@ -26,8 +26,9 @@ Layouts apply to the screen under the mouse. Apps that aren't running are skippe
 ## Install
 
 Unzip, move `BentoScreen.app` to /Applications, open it, and allow it under
-System Settings → Privacy & Security → Accessibility. Unsigned builds: the first open needs
-Privacy & Security → **Open Anyway**, and after each update remove + re-add it in Accessibility.
+System Settings → Privacy & Security → Accessibility. Release builds are self-signed, so the
+first open needs Privacy & Security → **Open Anyway**; the Accessibility grant survives updates.
+To start it at login: menu bar icon → Open at Login.
 
 ## Build
 
