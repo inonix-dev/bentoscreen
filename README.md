@@ -26,8 +26,8 @@ Layouts apply to the screen under the mouse. Apps that aren't running are skippe
 ## Install
 
 Unzip, move `BentoScreen.app` to /Applications, open it, and allow it under
-System Settings → Privacy & Security → Accessibility. Unsigned builds: the first open needs
-Privacy & Security → **Open Anyway**, and after each update remove + re-add it in Accessibility.
+System Settings → Privacy & Security → Accessibility. Release builds are self-signed, so the
+first open needs Privacy & Security → **Open Anyway**; the Accessibility grant survives updates.
 
 ## Build
 
