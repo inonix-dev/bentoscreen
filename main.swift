@@ -1,4 +1,4 @@
-// bentoscreen — one hotkey arranges every window of a layout.
+// BentoScreen — one hotkey arranges every window of a layout.
 // Layouts live in ~/.config/bentoscreen/layouts.json (written on first run).
 import AppKit
 import Carbon.HIToolbox
@@ -35,7 +35,7 @@ func loadLayouts() -> [Layout] {
 }
 
 func alert(_ text: String) {
-    let a = NSAlert(); a.messageText = "bentoscreen"; a.informativeText = text; a.runModal()
+    let a = NSAlert(); a.messageText = "BentoScreen"; a.informativeText = text; a.runModal()
 }
 
 // Cocoa screens are bottom-left origin; AX wants top-left origin of the primary screen.
@@ -239,7 +239,7 @@ final class App: NSObject, NSApplicationDelegate {
         for (title, sel) in [("Edit Layouts…", #selector(edit)), ("Reload Layouts", #selector(reload))] {
             let mi = NSMenuItem(title: title, action: sel, keyEquivalent: ""); mi.target = self; menu.addItem(mi)
         }
-        menu.addItem(NSMenuItem(title: "Quit bentoscreen", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: "Quit BentoScreen", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         item.menu = menu
     }
 
@@ -260,7 +260,7 @@ func menuIcon() -> NSImage {
     return img
 }
 
-// MARK: self-check (`bentoscreen --check`)
+// MARK: self-check (`BentoScreen --check`)
 
 func selfCheck() {
     let screen = CGRect(x: 0, y: 0, width: 1200, height: 900)  // primary, no menu bar for easy maths

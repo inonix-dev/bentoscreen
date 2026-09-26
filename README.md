@@ -1,4 +1,4 @@
-# bentoscreen
+# BentoScreen
 
 Menu-bar app for macOS: one hotkey puts every app of a layout in its slot.
 
@@ -25,13 +25,13 @@ Layouts apply to the screen under the mouse. Apps that aren't running are skippe
 
 ## Install
 
-Unzip, move `bentoscreen.app` to /Applications, open it, and allow it under
+Unzip, move `BentoScreen.app` to /Applications, open it, and allow it under
 System Settings → Privacy & Security → Accessibility. Unsigned builds: the first open needs
 Privacy & Security → **Open Anyway**, and after each update remove + re-add it in Accessibility.
 
 ## Build
 
-`./build.sh` → `build/bentoscreen.app` + `.zip` (universal, ad-hoc signed).
+`./build.sh` → `build/BentoScreen.app` + `.zip` (universal, ad-hoc signed).
 `SIGN_ID="Developer ID Application: …" ./build.sh` signs with a real identity.
 
 Menu bar icon: Remix Icon `layout-masonry-fill`, Apache-2.0.
